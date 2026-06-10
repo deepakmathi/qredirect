@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QRedirect — Admin</title>
 
-  <!-- QR code library (browser build: QRCode.toDataURL, QRCode.toString) -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <!-- QR: qrcodejs for display+PNG, qrcode-generator for SVG -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 
   <style>
     /* ── Reset & base ── */
@@ -490,9 +491,7 @@
         </button>
       </div>
       <div class="qr-display">
-        <div id="qr-canvas-wrap">
-          <canvas id="qr-canvas"></canvas>
-        </div>
+        <div id="qr-canvas-wrap"></div>
       </div>
       <div class="qr-download-btns">
         <button class="btn btn-primary" id="qr-download-png">
@@ -846,7 +845,7 @@ document.getElementById('qr-modal-backdrop').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeQrModal();
 });
 
-async function openQrModal(slug) {
+function openQrModal(slug) {
   state.qrSlug = slug;
   const permanentUrl = `${location.origin}/r/${slug}`;
   const link = state.links.find(l => l.slug === slug);
@@ -854,14 +853,17 @@ async function openQrModal(slug) {
   document.getElementById('qr-link-text').textContent = permanentUrl;
   document.getElementById('qr-modal-backdrop').classList.add('open');
 
-  // Render QR to canvas
-  const canvas = document.getElementById('qr-canvas');
+  // Render QR using qrcodejs (synchronous, reliable)
+  const wrap = document.getElementById('qr-canvas-wrap');
+  wrap.innerHTML = '';
   try {
-    await QRCode.toCanvas(canvas, permanentUrl, {
+    new QRCode(wrap, {
+      text: permanentUrl,
       width: 256,
-      margin: 2,
-      errorCorrectionLevel: 'H',
-      color: { dark: '#1e1b4b', light: '#ffffff' },
+      height: 256,
+      colorDark: '#1e1b4b',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
     });
   } catch (err) {
     toast('QR generation failed: ' + err.message, 'error');
@@ -879,28 +881,29 @@ document.getElementById('qr-copy-btn').addEventListener('click', () => {
   navigator.clipboard.writeText(text).then(() => toast('Link copied!', 'success'));
 });
 
-// Download PNG
+// Download PNG — grab canvas that qrcodejs injected into the wrap div
 document.getElementById('qr-download-png').addEventListener('click', () => {
-  const canvas = document.getElementById('qr-canvas');
   const slug = state.qrSlug || 'qr';
+  const canvas = document.querySelector('#qr-canvas-wrap canvas');
+  if (!canvas) { toast('QR not ready — open the QR modal first', 'error'); return; }
   const a = document.createElement('a');
   a.download = `qr-${slug}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 });
 
-// Download SVG
-document.getElementById('qr-download-svg').addEventListener('click', async () => {
+// Download SVG — use qrcode-generator (exposes global `qrcode`)
+document.getElementById('qr-download-svg').addEventListener('click', () => {
   const slug = state.qrSlug || 'qr';
   const permanentUrl = `${location.origin}/r/${slug}`;
   try {
-    const svgString = await QRCode.toString(permanentUrl, {
-      type: 'svg',
-      width: 256,
-      margin: 2,
-      errorCorrectionLevel: 'H',
-      color: { dark: '#1e1b4b', light: '#ffffff' },
-    });
+    const qr = qrcode(0, 'H'); // type 0 = auto-detect size, H = high error correction
+    qr.addData(permanentUrl);
+    qr.make();
+    // createSvgTag returns an <svg>...</svg> string
+    let svgString = qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
+    // Apply brand colour
+    svgString = svgString.replace(/fill="black"/g, 'fill="#1e1b4b"');
     const blob = new Blob([svgString], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
