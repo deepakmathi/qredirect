@@ -1,0 +1,16 @@
+{
+  "name": "qredirect",
+  "version": "1.0.0",
+  "description": "Dynamic QR redirect manager — update destinations without reprinting stickers",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.8.1",
+    "netlify-cli": "^17.0.0"
+  }
+}

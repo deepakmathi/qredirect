@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QRedirect — Admin</title>
+
+  <!-- QR code library (browser build: QRCode.toDataURL, QRCode.toString) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:    #7c3aed;
+      --brand-lt: #ede9fe;
+      --brand-dk: #5b21b6;
+      --danger:   #dc2626;
+      --danger-lt:#fee2e2;
+      --success:  #059669;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --radius:   0.75rem;
+      --shadow:   0 4px 20px rgba(0,0,0,0.08);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      min-height: 100vh;
+    }
+    button { cursor: pointer; font-family: inherit; }
+    input, textarea { font-family: inherit; }
+    a { color: var(--brand); text-decoration: none; }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      padding: 0.75rem 1.125rem;
+      border-radius: 0.625rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: slideIn 0.2s ease;
+      max-width: 320px;
+    }
+    .toast.success { background: var(--success); }
+    .toast.error   { background: var(--danger); }
+    .toast.info    { background: var(--brand); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ── Login screen ── */
+    #login-screen {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 50%, #e0e7ff 100%);
+      padding: 1.5rem;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 1.25rem;
+      padding: 2.5rem 2rem;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 8px 32px rgba(109,40,217,0.14);
+    }
+    .login-logo {
+      display: flex; align-items: center; gap: 0.625rem;
+      margin-bottom: 1.75rem;
+    }
+    .login-logo .logo-icon {
+      width: 40px; height: 40px;
+      background: var(--brand);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-logo .logo-icon svg { width: 22px; height: 22px; }
+    .login-logo .logo-text { font-size: 1.25rem; font-weight: 700; color: var(--gray-900); }
+    .login-card h2 { font-size: 1.375rem; font-weight: 700; margin-bottom: 0.375rem; }
+    .login-card p  { font-size: 0.9rem; color: var(--gray-500); margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--gray-700); margin-bottom: 0.375rem; }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 0.5rem;
+      font-size: 0.9375rem;
+      transition: border-color 0.15s;
+      outline: none;
+      background: #fff;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+    .form-group .hint { font-size: 0.775rem; color: var(--gray-400); margin-top: 0.3rem; }
+    .form-group .preview-link {
+      display: inline-block;
+      font-size: 0.8rem;
+      background: var(--brand-lt);
+      color: var(--brand);
+      padding: 0.25rem 0.625rem;
+      border-radius: 4px;
+      margin-top: 0.3rem;
+      word-break: break-all;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.375rem;
+      padding: 0.625rem 1.125rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dk); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
+    .btn-secondary:hover { background: var(--gray-200); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-ghost { background: transparent; color: var(--gray-500); }
+    .btn-ghost:hover { background: var(--gray-100); color: var(--gray-700); }
+    .btn-full { width: 100%; justify-content: center; padding: 0.75rem; }
+    .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+    .btn-icon { padding: 0.4rem; border-radius: 0.375rem; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── App shell (after login) ── */
+    #app-shell { display: none; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 1.5rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-logo { display: flex; align-items: center; gap: 0.5rem; }
+    .topbar-logo .logo-icon {
+      width: 32px; height: 32px;
+      background: var(--brand); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .topbar-logo .logo-icon svg { width: 18px; height: 18px; }
+    .topbar-logo .logo-text { font-size: 1.1rem; font-weight: 700; }
+    .topbar-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-site {
+      font-size: 0.8125rem; color: var(--gray-500);
+      background: var(--gray-100); padding: 0.3rem 0.625rem;
+      border-radius: 0.4rem;
+    }
+
+    .main-content { flex: 1; padding: 1.75rem 1.5rem; max-width: 900px; margin: 0 auto; width: 100%; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: #fff; border-radius: var(--radius);
+      padding: 1.125rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .stat-card .stat-label { font-size: 0.775rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.375rem; }
+    .stat-card .stat-value { font-size: 1.625rem; font-weight: 700; color: var(--gray-900); }
+
+    /* ── Links section ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .section-header h2 { font-size: 1.0625rem; font-weight: 700; }
+
+    /* ── Link cards ── */
+    #links-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .link-card {
+      background: #fff; border-radius: var(--radius);
+      padding: 1rem 1.125rem;
+      box-shadow: var(--shadow);
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      transition: box-shadow 0.15s;
+    }
+    .link-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+    .link-info { min-width: 0; }
+    .link-title { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .link-title.untitled { color: var(--gray-400); font-style: italic; font-weight: 400; }
+    .link-meta { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
+    .slug-badge {
+      font-size: 0.8125rem; font-weight: 600;
+      background: var(--brand-lt); color: var(--brand);
+      padding: 0.175rem 0.5rem; border-radius: 4px;
+      font-family: 'Menlo', 'Courier New', monospace;
+    }
+    .scan-badge {
+      font-size: 0.775rem; color: var(--gray-500);
+      display: flex; align-items: center; gap: 0.25rem;
+    }
+    .scan-badge svg { width: 13px; height: 13px; }
+    .status-badge {
+      font-size: 0.7375rem; font-weight: 600; padding: 0.175rem 0.5rem; border-radius: 100px;
+    }
+    .status-badge.enabled  { background: #d1fae5; color: #065f46; }
+    .status-badge.disabled { background: var(--gray-100); color: var(--gray-500); }
+    .link-dest {
+      font-size: 0.8125rem; color: var(--gray-500);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 420px;
+    }
+    .link-actions { display: flex; align-items: center; gap: 0.375rem; flex-shrink: 0; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 3.5rem 1rem;
+      background: #fff; border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .empty-state svg { width: 56px; height: 56px; color: var(--gray-200); margin: 0 auto 1rem; display: block; }
+    .empty-state h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.375rem; }
+    .empty-state p  { font-size: 0.875rem; color: var(--gray-500); margin-bottom: 1.25rem; }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 500;
+      align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 1rem;
+      width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn { from { transform: scale(0.96) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 1.5rem 0;
+    }
+    .modal-header h3 { font-size: 1.0625rem; font-weight: 700; }
+    .modal-body { padding: 1.25rem 1.5rem; }
+    .modal-footer {
+      padding: 0 1.5rem 1.5rem;
+      display: flex; justify-content: flex-end; gap: 0.625rem;
+    }
+
+    /* ── Toggle switch ── */
+    .toggle-row { display: flex; align-items: center; gap: 0.75rem; }
+    .toggle-label { font-size: 0.875rem; font-weight: 600; color: var(--gray-700); }
+    .toggle {
+      position: relative; display: inline-block; width: 44px; height: 24px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--gray-200); border-radius: 100px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; top: 3px; left: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--brand); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* ── QR modal specifics ── */
+    .qr-display {
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem 0;
+    }
+    #qr-canvas-wrap { background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1.5px solid var(--gray-200); display: inline-block; }
+    #qr-canvas-wrap canvas, #qr-canvas-wrap img { display: block; }
+    .qr-link-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--gray-50); border: 1.5px solid var(--gray-200);
+      border-radius: 0.5rem; padding: 0.5rem 0.75rem;
+      margin-bottom: 1rem; word-break: break-all;
+    }
+    .qr-link-row span { flex: 1; font-size: 0.875rem; color: var(--brand); font-family: 'Menlo', monospace; }
+    .qr-download-btns { display: flex; gap: 0.625rem; flex-wrap: wrap; }
+    .qr-download-btns .btn { flex: 1; justify-content: center; min-width: 120px; }
+
+    /* ── Delete confirm ── */
+    .delete-modal .modal { max-width: 380px; }
+    .delete-warning {
+      background: var(--danger-lt); border-radius: 0.5rem;
+      padding: 0.875rem 1rem; margin-bottom: 1rem;
+      font-size: 0.875rem; color: var(--danger);
+    }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 580px) {
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+      .link-card { grid-template-columns: 1fr; }
+      .link-actions { justify-content: flex-start; }
+      .topbar-site { display: none; }
+    }
+    @media (max-width: 380px) {
+      .stats-bar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     TOAST CONTAINER
+═══════════════════════════════════════════════════ -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <path d="M14 14h1v1h-1z M17 14h1v1h-1z M14 17h1v1h-1z M17 17h1v1h-1z M20 14h1v1h-1z M20 17h1v1h-1z M14 20h1v1h-1z M17 20h1v1h-1z M20 20h1v1h-1z"/>
+        </svg>
+      </div>
+      <span class="logo-text">QRedirect</span>
+    </div>
+    <h2>Admin Login</h2>
+    <p>Enter your admin token to manage your QR links.</p>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-token">Admin Token</label>
+        <input type="password" id="login-token" placeholder="Paste your ADMIN_TOKEN here" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+        Sign In
+      </button>
+    </form>
+    <p style="font-size:0.775rem;color:var(--gray-400);margin-top:1.25rem;text-align:center;">
+      Set <code>ADMIN_TOKEN</code> in Netlify → Site Settings → Environment Variables.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     APP SHELL (dashboard)
+═══════════════════════════════════════════════════ -->
+<div id="app-shell">
+  <nav class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <path d="M14 14h1v1h-1z M17 14h1v1h-1z M14 17h1v1h-1z"/>
+        </svg>
+      </div>
+      <span class="logo-text">QRedirect</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="topbar-site" id="topbar-site"></span>
+      <button class="btn btn-ghost btn-sm" id="logout-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Links</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Links</div>
+        <div class="stat-value" id="stat-active">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Scans</div>
+        <div class="stat-value" id="stat-scans">—</div>
+      </div>
+    </div>
+
+    <!-- Links section -->
+    <div class="section-header">
+      <h2>QR Links</h2>
+      <button class="btn btn-primary btn-sm" id="create-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Link
+      </button>
+    </div>
+
+    <div id="links-list">
+      <!-- populated by JS -->
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     CREATE / EDIT MODAL
+═══════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="edit-modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div class="modal-header">
+      <h3 id="edit-modal-title">New Link</h3>
+      <button class="btn btn-ghost btn-icon" id="edit-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="ef-destination">Destination URL <span style="color:var(--danger)">*</span></label>
+        <input type="url" id="ef-destination" placeholder="https://example.com/landing-page" />
+        <div class="hint">Where the QR code should send visitors right now.</div>
+      </div>
+      <div class="form-group">
+        <label for="ef-title">Title / Label</label>
+        <input type="text" id="ef-title" placeholder="e.g. Summer Promo Poster" maxlength="120" />
+      </div>
+      <div class="form-group" id="ef-slug-group">
+        <label for="ef-slug">Custom Slug</label>
+        <input type="text" id="ef-slug" placeholder="summer-promo (leave blank to auto-generate)" />
+        <div class="hint">Only a–z, 0–9, hyphens. Not at start/end.</div>
+        <div class="preview-link hidden" id="ef-slug-preview"></div>
+      </div>
+      <div class="form-group" id="ef-enabled-group">
+        <div class="toggle-row">
+          <label class="toggle" for="ef-enabled">
+            <input type="checkbox" id="ef-enabled" checked />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Link active</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="edit-modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="edit-modal-save">
+        <span id="edit-save-label">Create Link</span>
+        <span id="edit-save-spinner" class="spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     QR CODE MODAL
+═══════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="qr-modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
+    <div class="modal-header">
+      <h3 id="qr-modal-title">QR Code</h3>
+      <button class="btn btn-ghost btn-icon" id="qr-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="qr-link-row">
+        <span id="qr-link-text"></span>
+        <button class="btn btn-ghost btn-icon btn-sm" id="qr-copy-btn" title="Copy link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+      <div class="qr-display">
+        <div id="qr-canvas-wrap">
+          <canvas id="qr-canvas"></canvas>
+        </div>
+      </div>
+      <div class="qr-download-btns">
+        <button class="btn btn-primary" id="qr-download-png">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PNG
+        </button>
+        <button class="btn btn-secondary" id="qr-download-svg">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download SVG
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="qr-modal-close2">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DELETE CONFIRM MODAL
+═══════════════════════════════════════════════════ -->
+<div class="modal-backdrop delete-modal" id="delete-modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="modal-header">
+      <h3 id="delete-modal-title">Delete Link?</h3>
+      <button class="btn btn-ghost btn-icon" id="delete-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="delete-warning">
+        Any printed QR codes for <strong id="delete-slug-display"></strong> will stop working immediately.
+      </div>
+      <p style="font-size:0.875rem;color:var(--gray-500)">This action cannot be undone. Consider disabling the link instead if you may need it again.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="delete-modal-cancel">Cancel</button>
+      <button class="btn btn-danger" id="delete-modal-confirm">
+        <span id="delete-confirm-label">Delete</span>
+        <span id="delete-confirm-spinner" class="spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     APP SCRIPT
+═══════════════════════════════════════════════════ -->
+<script>
+// ── State ──────────────────────────────────────────
+const state = {
+  token: sessionStorage.getItem('qr_admin_token') || '',
+  links: [],
+  editingSlug: null,   // null = creating new
+  deletingSlug: null,
+  qrSlug: null,
+};
+
+// ── Toast ──────────────────────────────────────────
+function toast(msg, type = 'info', duration = 3200) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+// ── API ────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${state.token}`,
+    },
+  };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// ── Auth ───────────────────────────────────────────
+function showLogin() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-shell').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+  document.getElementById('topbar-site').textContent = location.hostname;
+  loadLinks();
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const token = document.getElementById('login-token').value.trim();
+  if (!token) return;
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing in…';
+
+  state.token = token;
+  try {
+    await api('GET', '/api/links');
+    sessionStorage.setItem('qr_admin_token', token);
+    showApp();
+  } catch (err) {
+    toast(err.message === 'HTTP 401' ? 'Wrong token — try again.' : `Login failed: ${err.message}`, 'error');
+    state.token = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+});
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  sessionStorage.removeItem('qr_admin_token');
+  state.token = '';
+  state.links = [];
+  document.getElementById('login-token').value = '';
+  showLogin();
+});
+
+// ── Load & render links ────────────────────────────
+async function loadLinks() {
+  try {
+    state.links = await api('GET', '/api/links');
+    renderLinks();
+    renderStats();
+  } catch (err) {
+    toast(`Failed to load links: ${err.message}`, 'error');
+  }
+}
+
+function renderStats() {
+  const total  = state.links.length;
+  const active = state.links.filter(l => l.enabled).length;
+  const scans  = state.links.reduce((s, l) => s + (l.scanCount || 0), 0);
+  document.getElementById('stat-total').textContent  = total;
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-scans').textContent  = scans;
+}
+
+function renderLinks() {
+  const container = document.getElementById('links-list');
+  if (!state.links.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <path d="M14 14h3v3m0 4h4v-4m-4 0h4"/>
+        </svg>
+        <h3>No links yet</h3>
+        <p>Create your first QR link to get started.</p>
+        <button class="btn btn-primary" onclick="openEditModal(null)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Link
+        </button>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = state.links.map(link => `
+    <div class="link-card" data-slug="${esc(link.slug)}">
+      <div class="link-info">
+        <div class="link-title${link.title ? '' : ' untitled'}">${link.title ? esc(link.title) : 'Untitled'}</div>
+        <div class="link-meta">
+          <span class="slug-badge">/r/${esc(link.slug)}</span>
+          <span class="status-badge ${link.enabled ? 'enabled' : 'disabled'}">${link.enabled ? 'Active' : 'Disabled'}</span>
+          <span class="scan-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            ${link.scanCount || 0} scan${link.scanCount === 1 ? '' : 's'}
+          </span>
+        </div>
+        <div class="link-dest" title="${esc(link.destination)}">${esc(link.destination)}</div>
+      </div>
+      <div class="link-actions">
+        <button class="btn btn-ghost btn-icon btn-sm" title="QR Code" onclick="openQrModal('${esc(link.slug)}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            <path d="M14 14h1v1h-1z M17 14h1v1h-1z M14 17h1v1h-1z"/>
+          </svg>
+        </button>
+        <button class="btn btn-ghost btn-icon btn-sm" title="Edit" onclick="openEditModal('${esc(link.slug)}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+        <button class="btn btn-ghost btn-icon btn-sm" title="Delete" style="color:var(--danger)" onclick="openDeleteModal('${esc(link.slug)}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── Create / Edit modal ────────────────────────────
+document.getElementById('create-btn').addEventListener('click', () => openEditModal(null));
+document.getElementById('edit-modal-close').addEventListener('click', closeEditModal);
+document.getElementById('edit-modal-cancel').addEventListener('click', closeEditModal);
+document.getElementById('edit-modal-backdrop').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
+
+document.getElementById('ef-slug').addEventListener('input', updateSlugPreview);
+
+function updateSlugPreview() {
+  const slug = document.getElementById('ef-slug').value.trim();
+  const preview = document.getElementById('ef-slug-preview');
+  if (slug) {
+    const clean = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    preview.textContent = `${location.origin}/r/${clean}`;
+    preview.classList.remove('hidden');
+  } else {
+    preview.classList.add('hidden');
+  }
+}
+
+function openEditModal(slug) {
+  state.editingSlug = slug;
+  const link = slug ? state.links.find(l => l.slug === slug) : null;
+
+  document.getElementById('edit-modal-title').textContent = slug ? 'Edit Link' : 'New Link';
+  document.getElementById('edit-save-label').textContent = slug ? 'Save Changes' : 'Create Link';
+  document.getElementById('ef-destination').value = link ? link.destination : '';
+  document.getElementById('ef-title').value = link ? (link.title || '') : '';
+  document.getElementById('ef-slug').value = link ? link.slug : '';
+  document.getElementById('ef-enabled').checked = link ? link.enabled : true;
+
+  // Hide slug field when editing (slug is immutable after creation)
+  document.getElementById('ef-slug-group').style.display = slug ? 'none' : '';
+
+  updateSlugPreview();
+  document.getElementById('edit-modal-backdrop').classList.add('open');
+  document.getElementById('ef-destination').focus();
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-backdrop').classList.remove('open');
+  state.editingSlug = null;
+}
+
+document.getElementById('edit-modal-save').addEventListener('click', async () => {
+  const destination = document.getElementById('ef-destination').value.trim();
+  const title       = document.getElementById('ef-title').value.trim();
+  const slug        = document.getElementById('ef-slug').value.trim();
+  const enabled     = document.getElementById('ef-enabled').checked;
+
+  if (!destination) { toast('Destination URL is required', 'error'); return; }
+
+  const btn = document.getElementById('edit-modal-save');
+  const label = document.getElementById('edit-save-label');
+  const spinner = document.getElementById('edit-save-spinner');
+  btn.disabled = true;
+  label.classList.add('hidden');
+  spinner.classList.remove('hidden');
+
+  try {
+    if (state.editingSlug) {
+      // Update
+      const updated = await api('PUT', `/api/links/${state.editingSlug}`, { destination, title, enabled });
+      const idx = state.links.findIndex(l => l.slug === state.editingSlug);
+      if (idx !== -1) state.links[idx] = updated;
+      toast('Link updated', 'success');
+    } else {
+      // Create
+      const created = await api('POST', '/api/links', { destination, title, slug: slug || undefined });
+      state.links.unshift(created);
+      toast('Link created', 'success');
+    }
+    renderLinks();
+    renderStats();
+    closeEditModal();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    label.classList.remove('hidden');
+    spinner.classList.add('hidden');
+  }
+});
+
+// ── Delete modal ───────────────────────────────────
+document.getElementById('delete-modal-close').addEventListener('click', closeDeleteModal);
+document.getElementById('delete-modal-cancel').addEventListener('click', closeDeleteModal);
+document.getElementById('delete-modal-backdrop').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeDeleteModal();
+});
+
+function openDeleteModal(slug) {
+  state.deletingSlug = slug;
+  document.getElementById('delete-slug-display').textContent = `/r/${slug}`;
+  document.getElementById('delete-modal-backdrop').classList.add('open');
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal-backdrop').classList.remove('open');
+  state.deletingSlug = null;
+}
+
+document.getElementById('delete-modal-confirm').addEventListener('click', async () => {
+  const slug = state.deletingSlug;
+  if (!slug) return;
+
+  const btn = document.getElementById('delete-modal-confirm');
+  const label = document.getElementById('delete-confirm-label');
+  const spinner = document.getElementById('delete-confirm-spinner');
+  btn.disabled = true;
+  label.classList.add('hidden');
+  spinner.classList.remove('hidden');
+
+  try {
+    await api('DELETE', `/api/links/${slug}`);
+    state.links = state.links.filter(l => l.slug !== slug);
+    renderLinks();
+    renderStats();
+    toast('Link deleted', 'info');
+    closeDeleteModal();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    label.classList.remove('hidden');
+    spinner.classList.add('hidden');
+  }
+});
+
+// ── QR modal ───────────────────────────────────────
+document.getElementById('qr-modal-close').addEventListener('click', closeQrModal);
+document.getElementById('qr-modal-close2').addEventListener('click', closeQrModal);
+document.getElementById('qr-modal-backdrop').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeQrModal();
+});
+
+async function openQrModal(slug) {
+  state.qrSlug = slug;
+  const permanentUrl = `${location.origin}/r/${slug}`;
+  const link = state.links.find(l => l.slug === slug);
+  document.getElementById('qr-modal-title').textContent = link?.title ? `QR — ${link.title}` : 'QR Code';
+  document.getElementById('qr-link-text').textContent = permanentUrl;
+  document.getElementById('qr-modal-backdrop').classList.add('open');
+
+  // Render QR to canvas
+  const canvas = document.getElementById('qr-canvas');
+  try {
+    await QRCode.toCanvas(canvas, permanentUrl, {
+      width: 256,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: { dark: '#1e1b4b', light: '#ffffff' },
+    });
+  } catch (err) {
+    toast('QR generation failed: ' + err.message, 'error');
+  }
+}
+
+function closeQrModal() {
+  document.getElementById('qr-modal-backdrop').classList.remove('open');
+  state.qrSlug = null;
+}
+
+// Copy link button
+document.getElementById('qr-copy-btn').addEventListener('click', () => {
+  const text = document.getElementById('qr-link-text').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Link copied!', 'success'));
+});
+
+// Download PNG
+document.getElementById('qr-download-png').addEventListener('click', () => {
+  const canvas = document.getElementById('qr-canvas');
+  const slug = state.qrSlug || 'qr';
+  const a = document.createElement('a');
+  a.download = `qr-${slug}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+// Download SVG
+document.getElementById('qr-download-svg').addEventListener('click', async () => {
+  const slug = state.qrSlug || 'qr';
+  const permanentUrl = `${location.origin}/r/${slug}`;
+  try {
+    const svgString = await QRCode.toString(permanentUrl, {
+      type: 'svg',
+      width: 256,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: { dark: '#1e1b4b', light: '#ffffff' },
+    });
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = `qr-${slug}.svg`;
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast('SVG generation failed: ' + err.message, 'error');
+  }
+});
+
+// ── Init ───────────────────────────────────────────
+if (state.token) {
+  // Re-validate stored token
+  api('GET', '/api/links')
+    .then(links => { state.links = links; showApp(); })
+    .catch(() => { sessionStorage.removeItem('qr_admin_token'); state.token = ''; showLogin(); });
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>

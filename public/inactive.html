@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link Not Active — QRedirect</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f3ff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e1b4b;
+      padding: 1.5rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 1.25rem;
+      padding: 3rem 2.5rem;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(109, 40, 217, 0.12);
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      background: #ede9fe;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+    .icon svg { width: 36px; height: 36px; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #1e1b4b;
+    }
+    p {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: #6b7280;
+    }
+    .brand {
+      margin-top: 2.5rem;
+      font-size: 0.8125rem;
+      color: #a78bfa;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+    <h1>This link isn't active</h1>
+    <p>The QR code you scanned points to a link that has been disabled or doesn't exist. Please contact whoever shared this code for an updated version.</p>
+    <div class="brand">QRedirect</div>
+  </div>
+</body>
+</html>

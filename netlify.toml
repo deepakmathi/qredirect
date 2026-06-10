@@ -1,0 +1,12 @@
+[build]
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Catch-all: serve the admin SPA for any unmatched path
+# (Functions with config.path take priority over this)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
